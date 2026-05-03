@@ -25,11 +25,12 @@ public class RedreshIterceptor implements HandlerInterceptor {
             return true;
         }
         if(!StrUtil.isBlank(token)){
-            Map<Object, Object> usermap = stringRedisTemplate.opsForHash().entries(token);
+            //根据建把值转化为map
+            Map<Object, Object> usermap = stringRedisTemplate.opsForHash().entries(SystemConstants.USER_TOKEN+token);
             if(!usermap.isEmpty()){
                 UserDTO user = BeanUtil.fillBeanWithMap(usermap, new UserDTO(), false);
                 UserHolder.saveUser(user);
-                stringRedisTemplate.expire(token,30, TimeUnit.MINUTES);
+                stringRedisTemplate.expire(SystemConstants.USER_TOKEN+token,3000, TimeUnit.MINUTES);
             }
         }
         return true;

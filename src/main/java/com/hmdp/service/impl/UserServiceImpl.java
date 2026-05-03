@@ -49,7 +49,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //生成验证码
         String code = RandomUtil.randomNumbers(6);
         //保存验证码到redis
-       stringRedisTemplate.opsForValue().set(phone,code);
+       stringRedisTemplate.opsForValue().set(phone,code,2L,TimeUnit.MINUTES);
         //发送验证码
         log.info("已保存的验证码{}",code);
         return Result.ok();
@@ -83,9 +83,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         Map<String, Object> userMap = BeanUtil.beanToMap(userDTO,new HashMap<>()
                 , CopyOptions.create().setFieldValueEditor((filename,filevalue) -> filevalue.toString()));
         //将user对象存入redishash
-        stringRedisTemplate.opsForHash().putAll(token,userMap);
+        stringRedisTemplate.opsForHash().putAll(SystemConstants.USER_TOKEN+token,userMap);
         //设置token有效期
-        stringRedisTemplate.expire(token,30, TimeUnit.MINUTES);
+        stringRedisTemplate.expire(SystemConstants.USER_TOKEN+token,3000, TimeUnit.MINUTES);
         //将token返回给前端
         return Result.ok(token);
     }

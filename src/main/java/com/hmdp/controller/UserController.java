@@ -57,6 +57,7 @@ public class UserController {
     @PostMapping("/logout")
     public Result logout(){
         // TODO 实现登出功能
+        //清除对应的token
         return Result.fail("功能未完成");
     }
 
