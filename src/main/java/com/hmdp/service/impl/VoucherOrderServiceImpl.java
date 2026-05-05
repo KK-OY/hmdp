@@ -63,7 +63,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         Long userId = UserHolder.getUser().getId();
 //        RedisLock rd = new RedisLock(stringRedisTemplate,"order："+userId);
-
+//        防止一个用户并发访问
         RLock lock = redissonClient.getLock("lock:order" + userId);
         boolean flag = lock.tryLock();
         if (!flag){
