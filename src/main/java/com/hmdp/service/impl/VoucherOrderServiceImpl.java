@@ -1,5 +1,6 @@
 package com.hmdp.service.impl;
 
+import com.hmdp.config.RedissionConfig;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.entity.Voucher;
@@ -9,11 +10,17 @@ import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.IdReidsWorkers;
+import com.hmdp.utils.RedisLock;
 import com.hmdp.utils.UserHolder;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 
 /**
@@ -26,16 +33,21 @@ import java.time.LocalDateTime;
  */
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
-
+//    @Autowired
+//    private VoucherOrderServiceImpl voucherOrderService;
     @Autowired
     private ISeckillVoucherService iSeckillVoucherService;
     @Autowired
     private IdReidsWorkers idReidsWorkers;
-
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private RedissonClient redissonClient;
     @Override
-    @Transactional
+
     public Result order(Long voucherId) {
         SeckillVoucher vocher = iSeckillVoucherService.getById(voucherId);
+
         if(vocher == null){
             return Result.fail("优惠不存在！");
         }
@@ -48,10 +60,38 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         if(vocher.getStock() <1){
             return Result.fail("库存不足！");
         }
+
+        Long userId = UserHolder.getUser().getId();
+//        RedisLock rd = new RedisLock(stringRedisTemplate,"order："+userId);
+
+        RLock lock = redissonClient.getLock("lock:order" + userId);
+        boolean flag = lock.tryLock();
+        if (!flag){
+            return Result.fail("不可以重复下单");
+        }
+
+        try {
+            IVoucherOrderService o =(IVoucherOrderService) AopContext.currentProxy();
+            return o.getResult(voucherId);
+        }
+        finally {
+            lock.unlock();
+        }
+
+    }
+
+
+    @Transactional
+    public Result getResult(Long voucherId) {
+        Long userId = UserHolder.getUser().getId();
+        Integer count = query().eq("user_id",userId).eq("voucher_id", voucherId).count();
+        if(count > 0){
+            return Result.fail("只可以购买一次");
+        }
         //扣减库存
         boolean DonKnow = iSeckillVoucherService.update()
                 .setSql("stock = stock - 1")
-                .eq("voucher_id", voucherId).update();
+                .eq("voucher_id", voucherId).gt("stock",0).update();
         if(!DonKnow){
             return Result.fail("库存不足！");
         }
