@@ -8,5 +8,6 @@ public class SystemConstants {
     public static final int MAX_PAGE_SIZE = 10;
     public static final String SHOP_PREFIX = "shop_id:";
     public static final String SHOP_LIST = "List:shopList";
+    public static final String is_Like = "is_Like:";
 
 }

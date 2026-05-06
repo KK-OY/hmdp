@@ -1,12 +1,16 @@
 package com.hmdp.controller;
 
 
+import cn.hutool.core.bean.BeanUtil;
 import com.hmdp.dto.LoginFormDTO;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.UserDTO;
+import com.hmdp.entity.User;
 import com.hmdp.entity.UserInfo;
 import com.hmdp.service.IUserInfoService;
 import com.hmdp.service.IUserService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -30,6 +34,9 @@ public class UserController {
 
     @Resource
     private IUserInfoService userInfoService;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     /**
      * 发送手机验证码
@@ -55,10 +62,11 @@ public class UserController {
      * @return 无
      */
     @PostMapping("/logout")
-    public Result logout(){
+    public Result logout(@RequestHeader(value = "authorization", required = false) String token){
         // TODO 实现登出功能
         //清除对应的token
-        return Result.fail("功能未完成");
+        userService.logout(token);
+        return Result.fail("已退出");
     }
 
     @GetMapping("/me")
@@ -80,4 +88,21 @@ public class UserController {
         // 返回
         return Result.ok(info);
     }
+
+
+// UserController 根据id查询用户
+
+    @GetMapping("/{id}")
+    public Result queryUserById(@PathVariable("id") Long userId){
+        // 查询详情
+        User user = userService.getById(userId);
+        if (user == null) {
+            return Result.ok();
+        }
+        UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
+        // 返回
+        return Result.ok(userDTO);
+    }
+
+
 }
